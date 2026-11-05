@@ -1,6 +1,6 @@
 import * as Handlebars from "handlebars";
 import { AbilityScores, Frontmatter, SkillsBlock } from "../types";
-import { parseAbilityBlockFromDocument, calculateModifier, getTotalScore } from "../domains/abilities";
+import { parseAbilityBlockFromText, calculateModifier, getTotalScore } from "../domains/abilities";
 import { parseSkillsBlock } from "../domains/skills";
 import { documentTextFor } from "../services/document-text";
 import { FileContext } from "../views/filecontext";
@@ -102,6 +102,7 @@ export function coerceBooleanTemplate(value: unknown, context?: TemplateContext 
 
 export function createTemplateContext(el: HTMLElement, fileContext: FileContext): TemplateContext {
   const frontmatter = fileContext.frontmatter();
+  const documentText = documentTextFor(el, fileContext.md());
 
   let abilities: AbilityScores = {
     strength: 0,
@@ -120,8 +121,7 @@ export function createTemplateContext(el: HTMLElement, fileContext: FileContext)
   };
 
   try {
-    // Try to parse abilities from the document
-    const abilityBlock = parseAbilityBlockFromDocument(el, fileContext.md(), frontmatter);
+    const abilityBlock = parseAbilityBlockFromText(documentText, frontmatter);
 
     // Calculate total scores including bonuses that modify the score
     abilities = {
@@ -137,8 +137,7 @@ export function createTemplateContext(el: HTMLElement, fileContext: FileContext)
   }
 
   try {
-    // Try to parse skills from the document
-    const skillsContent = extractFirstCodeBlock(documentTextFor(el, fileContext.md()), "skills");
+    const skillsContent = extractFirstCodeBlock(documentText, "skills");
 
     if (skillsContent) {
       skills = parseSkillsBlock(skillsContent);

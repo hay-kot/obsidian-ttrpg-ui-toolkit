@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SkillsView } from "./SkillsView";
 import { App, MarkdownPostProcessorContext } from "obsidian";
 import * as AbilityService from "../domains/abilities";
@@ -47,8 +47,9 @@ describe("SkillsView", () => {
 
   beforeEach(() => {
     addedChild = null;
-    onFrontmatterChange.mockClear();
-    onAbilitiesChange.mockClear();
+    // mockReset, not mockClear: some tests swap in a capturing implementation.
+    onFrontmatterChange.mockReset().mockImplementation(() => () => {});
+    onAbilitiesChange.mockReset().mockImplementation(() => () => {});
     mockApp = {} as App;
     skillsView = new SkillsView(mockApp);
     mockElement = {
@@ -63,8 +64,12 @@ describe("SkillsView", () => {
     } as any;
   });
 
+  afterEach(() => {
+    documentText.clear();
+  });
+
   it("should handle missing ability block gracefully", async () => {
-    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromDocument");
+    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromText");
     parseAbilityBlockSpy.mockImplementation(() => {
       throw new Error("No ability code blocks found");
     });
@@ -81,7 +86,7 @@ describe("SkillsView", () => {
   });
 
   it("should use ability scores when ability block is found", async () => {
-    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromDocument");
+    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromText");
     parseAbilityBlockSpy.mockReturnValue({
       abilities: {
         strength: 16,
@@ -106,7 +111,7 @@ describe("SkillsView", () => {
   });
 
   it("should use default ability scores (10) when no ability block found", async () => {
-    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromDocument");
+    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromText");
     parseAbilityBlockSpy.mockImplementation(() => {
       throw new Error("No ability code blocks found");
     });
@@ -121,7 +126,7 @@ describe("SkillsView", () => {
   });
 
   it("should subscribe to frontmatter and abilities changes when ability block uses templates", async () => {
-    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromDocument");
+    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromText");
     parseAbilityBlockSpy.mockReturnValue({
       abilities: {
         strength: 14,
@@ -156,7 +161,7 @@ describe("SkillsView", () => {
   });
 
   it("should re-render when subscribed frontmatter change fires", async () => {
-    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromDocument");
+    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromText");
     parseAbilityBlockSpy.mockReturnValue({
       abilities: {
         strength: 14,
@@ -201,7 +206,7 @@ describe("SkillsView", () => {
   });
 
   it("produces numeric skill modifiers from a resolved ability block", async () => {
-    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromDocument");
+    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromText");
     // Simulate the resolved block (e.g. after templates have been applied).
     parseAbilityBlockSpy.mockReturnValue({
       abilities: {
@@ -240,7 +245,7 @@ describe("SkillsView", () => {
   });
 
   it("renders skills when an ability score resolves to 0 (template fallback)", async () => {
-    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromDocument");
+    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromText");
     // Simulates resolveAbilityBlock falling back to 0 for an unresolvable template:
     // a strict !skillAbility check would treat 0 as missing and throw.
     parseAbilityBlockSpy.mockReturnValue({
@@ -273,7 +278,7 @@ describe("SkillsView", () => {
   });
 
   it("flags advantage and disadvantage on the matching skills", async () => {
-    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromDocument");
+    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromText");
     parseAbilityBlockSpy.mockReturnValue({
       abilities: {
         strength: 10,
@@ -314,7 +319,7 @@ disadvantage:
   });
 
   it("cancels out a skill flagged as both advantage and disadvantage", async () => {
-    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromDocument");
+    const parseAbilityBlockSpy = vi.spyOn(AbilityService, "parseAbilityBlockFromText");
     parseAbilityBlockSpy.mockReturnValue({
       abilities: {
         strength: 10,
@@ -343,6 +348,7 @@ disadvantage:
 
     parseAbilityBlockSpy.mockRestore();
   });
+
   it("uses the note's file text when section info is null (embeds)", async () => {
     const noteText = "```ability\nabilities:\n  strength: 18\n```\n\n```skills\nproficiencies:\n  - athletics\n```";
     documentText.init({
@@ -374,7 +380,5 @@ disadvantage:
 
     // Strength 18 -> +4, plus +3 proficiency.
     expect(athleticsIn(1)).toBe(7);
-
-    documentText.clear();
   });
 });

@@ -32,7 +32,7 @@ class SkillsComponent extends TemplateAwareComponent {
     const frontmatter = this.fileContext.frontmatter();
     let abilityBlock: AbilityBlock;
     try {
-      abilityBlock = AbilityService.parseAbilityBlockFromDocument(this.containerEl, this.fileContext.md(), frontmatter);
+      abilityBlock = AbilityService.parseAbilityBlockFromText(documentText, frontmatter);
     } catch {
       // No ability block found; fall back to defaults
       abilityBlock = {

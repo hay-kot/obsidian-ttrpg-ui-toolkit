@@ -19,11 +19,13 @@ export class DocumentTextCache {
   private loads = new Map<string, Promise<string>>();
 
   init(app: App) {
-    this.app = app;
     this.clear();
+    this.app = app;
   }
 
+  /** Drops all cached text and the app, so reads return "" until the next init. */
   clear() {
+    this.app = null;
     this.texts.clear();
     this.loads.clear();
   }
@@ -71,6 +73,9 @@ export class DocumentTextCache {
       }
     }
 
+    // The cache was cleared (plugin unload) while the read was in flight.
+    if (this.app !== app) return text;
+
     this.texts.set(path, text);
     if (text) publishFrontmatterChange(app, path);
     return text;
@@ -92,4 +97,16 @@ export function documentTextFor(el: HTMLElement, ctx: MarkdownPostProcessorConte
   const sectionText = ctx.getSectionInfo(el)?.text;
   if (sectionText !== undefined) return sectionText;
   return ctx.sourcePath ? documentText.get(ctx.sourcePath) : "";
+}
+
+/**
+ * Like documentTextFor, but waits for the file read instead of returning ""
+ * on a cache miss. Blocks that persist state derived from templates (health,
+ * consumables) use this so a cold cache cannot save values computed from
+ * default ability scores.
+ */
+export async function loadDocumentTextFor(el: HTMLElement, ctx: MarkdownPostProcessorContext): Promise<string> {
+  const sectionText = ctx.getSectionInfo(el)?.text;
+  if (sectionText !== undefined) return sectionText;
+  return ctx.sourcePath ? documentText.read(ctx.sourcePath) : "";
 }

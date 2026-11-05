@@ -64,12 +64,18 @@ describe("DocumentTextCache", () => {
     expect(listener.mock.calls[0][0].proficiency_bonus).toBe(4);
   });
 
-  it("caches an empty result for missing files instead of retrying", async () => {
+  it("caches an empty result for missing files without publishing", async () => {
     const { app } = fakeApp({});
     cache.init(app);
+    const listener = vi.fn();
+    const unsubscribe = msgbus.subscribe("missing.md", "fm:changed", listener);
 
     expect(await cache.read("missing.md")).toBe("");
+    expect(await cache.read("missing.md")).toBe("");
+    unsubscribe();
+
     expect(app.vault.getFileByPath).toHaveBeenCalledTimes(1);
+    expect(listener).not.toHaveBeenCalled();
   });
 
   it("refreshes files it holds and ignores files it does not", async () => {
