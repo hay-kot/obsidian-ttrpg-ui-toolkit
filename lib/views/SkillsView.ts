@@ -4,6 +4,7 @@ import SkillCards from "../components/SkillCards.vue";
 import { MarkdownPostProcessorContext } from "obsidian";
 import * as AbilityService from "lib/domains/abilities";
 import * as SkillsService from "lib/domains/skills";
+import { documentTextFor } from "lib/services/document-text";
 import { AbilityBlock, AbilityScores, SkillItem } from "lib/types";
 import { extractFirstCodeBlock } from "../utils/codeblock-extractor";
 import { coerceBooleanTemplate } from "../utils/template";
@@ -18,11 +19,12 @@ export class SkillsView extends BaseView {
 }
 
 class SkillsComponent extends TemplateAwareComponent {
+  protected alwaysRerenderOnChange = true;
+
   protected processAndRender() {
     const skillsBlock = SkillsService.parseSkillsBlock(this.source);
 
-    const sectionInfo = this.fileContext.md().getSectionInfo(this.containerEl);
-    const documentText = sectionInfo?.text || "";
+    const documentText = documentTextFor(this.containerEl, this.fileContext.md());
     const abilityBlockSrc = extractFirstCodeBlock(documentText, "ability") ?? "";
 
     const templateContext = this.setupTemplates([this.source, abilityBlockSrc]);

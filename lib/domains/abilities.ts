@@ -3,6 +3,7 @@ import { MarkdownPostProcessorContext } from "obsidian";
 import * as Utils from "lib/utils/utils";
 import { parseYamlObject } from "lib/utils/yaml";
 import { extractFirstCodeBlock } from "../utils/codeblock-extractor";
+import { documentTextFor } from "../services/document-text";
 import { coerceBooleanTemplate, processTemplate, TemplateContext } from "../utils/template";
 
 export { calculateModifier, formatModifier } from "./dnd/modifiers";
@@ -66,10 +67,7 @@ export function parseAbilityBlockFromDocument(
   ctx: MarkdownPostProcessorContext,
   frontmatter?: Frontmatter | null
 ): AbilityBlock {
-  const sectionInfo = ctx.getSectionInfo(el);
-  const documentText = sectionInfo?.text || "";
-
-  const abilityContent = extractFirstCodeBlock(documentText, "ability");
+  const abilityContent = extractFirstCodeBlock(documentTextFor(el, ctx), "ability");
 
   if (!abilityContent) {
     throw new Error("No ability code blocks found");

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SkillsView } from "./SkillsView";
 import { App, MarkdownPostProcessorContext } from "obsidian";
 import * as AbilityService from "../domains/abilities";
+import { documentText } from "../services/document-text";
 
 // Mock VueMarkdown to avoid DOM issues in Node environment.
 // TemplateAwareComponent extends VueMarkdown, so we capture mount calls and
@@ -341,5 +342,39 @@ disadvantage:
     expect(perception.hasDisadvantage).toBe(false);
 
     parseAbilityBlockSpy.mockRestore();
+  });
+  it("uses the note's file text when section info is null (embeds)", async () => {
+    const noteText = "```ability\nabilities:\n  strength: 18\n```\n\n```skills\nproficiencies:\n  - athletics\n```";
+    documentText.init({
+      vault: {
+        getFileByPath: (path: string) => ({ path }),
+        cachedRead: async () => noteText,
+      },
+      metadataCache: { getCache: () => ({}) },
+    } as unknown as App);
+
+    let rerender: (() => void) | null = null;
+    onFrontmatterChange.mockImplementation((cb: any) => {
+      rerender = cb;
+      return () => {};
+    });
+
+    skillsView.render("proficiencies:\n  - athletics", mockElement, mockContext);
+    await addedChild.onload();
+
+    const athleticsIn = (call: number) =>
+      addedChild.mount.mock.calls[call][1].items.find((i: any) => i.label === "Athletics").modifier;
+
+    // The file read is still in flight on first render, so defaults apply.
+    expect(athleticsIn(0)).toBe(3);
+
+    await documentText.read("test.md");
+    expect(rerender).not.toBeNull();
+    (rerender as any)();
+
+    // Strength 18 -> +4, plus +3 proficiency.
+    expect(athleticsIn(1)).toBe(7);
+
+    documentText.clear();
   });
 });

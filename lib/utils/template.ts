@@ -2,6 +2,7 @@ import * as Handlebars from "handlebars";
 import { AbilityScores, Frontmatter, SkillsBlock } from "../types";
 import { parseAbilityBlockFromDocument, calculateModifier, getTotalScore } from "../domains/abilities";
 import { parseSkillsBlock } from "../domains/skills";
+import { documentTextFor } from "../services/document-text";
 import { FileContext } from "../views/filecontext";
 import { extractFirstCodeBlock } from "./codeblock-extractor";
 
@@ -137,10 +138,7 @@ export function createTemplateContext(el: HTMLElement, fileContext: FileContext)
 
   try {
     // Try to parse skills from the document
-    const sectionInfo = fileContext.md().getSectionInfo(el);
-    const documentText = sectionInfo?.text || "";
-
-    const skillsContent = extractFirstCodeBlock(documentText, "skills");
+    const skillsContent = extractFirstCodeBlock(documentTextFor(el, fileContext.md()), "skills");
 
     if (skillsContent) {
       skills = parseSkillsBlock(skillsContent);
