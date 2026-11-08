@@ -53,6 +53,8 @@ proficiencies:
 
 Highlight saving throws that currently have advantage or disadvantage. Keys accept the full ability name (`strength`) or its abbreviation (`str`). A `true` value marks the save with an up-chevron (advantage) or down-chevron (disadvantage) icon; hovering it shows a tooltip naming the ability and which one applies. A save flagged as both, or as neither, gets no indicator.
 
+<AdvantageDemo block="ability" />
+
 ````yaml
 ```ability
 abilities:
@@ -73,4 +75,4 @@ disadvantage:
 ```
 ````
 
-Because the templated values read from frontmatter, a [Meta Bind](https://cwyther.gitbook.io/obsidian-meta-bind-plugin) toggle bound to `dexAdvantage` (etc.) updates the coloring the moment it changes.
+Because the templated values read from frontmatter, a [Meta Bind](https://cwyther.gitbook.io/obsidian-meta-bind-plugin) toggle bound to `dexAdvantage` (etc.) updates the indicator the moment it changes.

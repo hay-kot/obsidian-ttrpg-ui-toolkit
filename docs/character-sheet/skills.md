@@ -57,6 +57,8 @@ The skills block automatically displays all 18 D&D 5e skills: Acrobatics, Animal
 
 Highlight skills that currently have advantage or disadvantage. Keys are skill names matched against the full label, so multi-word skills are written with spaces (`sleight of hand`). A `true` value marks the skill with an up-chevron (advantage) or down-chevron (disadvantage) icon; hovering it shows a tooltip naming the skill and which one applies. A skill flagged as both, or as neither, gets no indicator.
 
+<AdvantageDemo block="skills" />
+
 ````yaml
 ```skills
 proficiencies:
@@ -73,4 +75,4 @@ disadvantage:
 ```
 ````
 
-Because the templated values read from frontmatter, a [Meta Bind](https://cwyther.gitbook.io/obsidian-meta-bind-plugin) toggle bound to `stealthAdvantage` (etc.) updates the coloring the moment it changes.
+Because the templated values read from frontmatter, a [Meta Bind](https://cwyther.gitbook.io/obsidian-meta-bind-plugin) toggle bound to `stealthAdvantage` (etc.) updates the indicator the moment it changes.
