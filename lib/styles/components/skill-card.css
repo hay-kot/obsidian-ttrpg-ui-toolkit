@@ -73,6 +73,14 @@
     gap: 0.5rem;
 }
 
+/* Fixed width so the advantage indicator to its left lines up across rows;
+ * "-1" renders narrower than "+0", and "+10" needs room too. */
+.dnd-ui-skill-value {
+    min-width: 2em;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
 .dnd-ui-skill-ability {
     font-size: 0.8rem;
     color: var(--dnd-ui-color-text-muted);
