@@ -1,5 +1,4 @@
 import { AbilityBlock, AbilityScores, Frontmatter, GenericBonus } from "lib/types";
-import { MarkdownPostProcessorContext } from "obsidian";
 import * as Utils from "lib/utils/utils";
 import { parseYamlObject } from "lib/utils/yaml";
 import { extractFirstCodeBlock } from "../utils/codeblock-extractor";
@@ -61,14 +60,8 @@ const ZERO_ABILITIES: AbilityScores = {
   charisma: 0,
 };
 
-export function parseAbilityBlockFromDocument(
-  el: HTMLElement,
-  ctx: MarkdownPostProcessorContext,
-  frontmatter?: Frontmatter | null
-): AbilityBlock {
-  const sectionInfo = ctx.getSectionInfo(el);
-  const documentText = sectionInfo?.text || "";
-
+/** Parses and resolves the first `ability` code block in a note's text. Throws when there is none. */
+export function parseAbilityBlockFromText(documentText: string, frontmatter?: Frontmatter | null): AbilityBlock {
   const abilityContent = extractFirstCodeBlock(documentText, "ability");
 
   if (!abilityContent) {
@@ -125,7 +118,7 @@ function resolveAdvantageMap(
  * strings such as `{{frontmatter.str}}`) into an AbilityBlock with numeric
  * scores. Templates are evaluated against a minimal context (frontmatter +
  * zeroed abilities/skills) to avoid recursing through `createTemplateContext`,
- * which itself calls `parseAbilityBlockFromDocument`. Non-finite results emit a
+ * which itself calls `parseAbilityBlockFromText`. Non-finite results emit a
  * console.warn and fall back to 0.
  */
 export function resolveAbilityBlock(raw: RawAbilityBlock, frontmatter: Frontmatter | null): AbilityBlock {

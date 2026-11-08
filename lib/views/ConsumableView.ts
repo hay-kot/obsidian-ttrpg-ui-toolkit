@@ -5,6 +5,7 @@ import * as ConsumableService from "lib/domains/consumables";
 import MultiConsumableCheckboxes from "lib/components/MultiConsumableCheckboxes.vue";
 import { KeyValueStore } from "lib/services/kv/kv";
 import { ConsumableState } from "lib/domains/consumables";
+import { loadDocumentTextFor } from "lib/services/document-text";
 import { msgbus } from "lib/services/event-bus";
 import { shouldResetOnEvent, getResetAmount } from "lib/domains/events";
 import { ParsedConsumableBlock } from "lib/types";
@@ -70,6 +71,11 @@ class ConsumableMarkdown extends VueMarkdown {
 
   private async initialize() {
     const consumablesBlock = ConsumableService.parseConsumablesBlock(this.source);
+    // Wait for the note text so templated `uses` do not first render a box
+    // count computed from default ability scores (see loadDocumentTextFor).
+    if (consumablesBlock.items.some((item) => typeof item.uses === "string" && hasTemplateVariables(item.uses))) {
+      await loadDocumentTextFor(this.containerEl, this.fileContext.md());
+    }
     this.consumables = consumablesBlock.items.map((item) => this.processTemplateInConsumable(item));
 
     this.setupFrontmatterChangeListener();

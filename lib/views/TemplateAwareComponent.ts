@@ -21,6 +21,12 @@ export abstract class TemplateAwareComponent extends VueMarkdown {
    * so they don't subscribe to their own event and recurse on re-render.
    */
   protected listenToAbilitiesChange = true;
+  /**
+   * Set to true in components whose output depends on the frontmatter or the
+   * ability block even when their own YAML has no templates, so they re-render
+   * on change events too.
+   */
+  protected alwaysRerenderOnChange = false;
 
   constructor(el: HTMLElement, source: string, app: App, ctx: MarkdownPostProcessorContext) {
     super(el);
@@ -56,7 +62,7 @@ export abstract class TemplateAwareComponent extends VueMarkdown {
   private setupListeners() {
     this.addUnloadFn(
       this.fileContext.onFrontmatterChange(() => {
-        if (!this.isTemplate) return;
+        if (!this.isTemplate && !this.alwaysRerenderOnChange) return;
         this.processAndRender();
       })
     );
@@ -64,7 +70,7 @@ export abstract class TemplateAwareComponent extends VueMarkdown {
     if (this.listenToAbilitiesChange) {
       this.addUnloadFn(
         this.fileContext.onAbilitiesChange(() => {
-          if (!this.isTemplate) return;
+          if (!this.isTemplate && !this.alwaysRerenderOnChange) return;
           this.processAndRender();
         })
       );

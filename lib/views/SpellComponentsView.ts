@@ -7,6 +7,7 @@ import { parseYamlObject } from "lib/utils/yaml";
 import { useFileContext } from "./filecontext";
 import * as AbilityService from "lib/domains/abilities";
 import * as Fm from "lib/domains/frontmatter";
+import { loadDocumentTextFor } from "lib/services/document-text";
 import { extractFirstCodeBlock } from "lib/utils/codeblock-extractor";
 
 const VALID_ABILITIES: Record<string, true> = {
@@ -83,14 +84,15 @@ export class SpellComponentsView extends BaseView {
     const abilityName = frontmatter.spellcasting_ability?.toLowerCase();
     if (!abilityName || !(abilityName in VALID_ABILITIES)) return;
 
+    if (!characterFile) {
+      const content = await loadDocumentTextFor(el, ctx);
+      abilityBlockContent = extractFirstCodeBlock(content, "ability");
+    }
+    if (!abilityBlockContent) return;
+
     try {
-      let abilityBlock;
-      if (abilityBlockContent) {
-        const raw = AbilityService.parseAbilityBlock(abilityBlockContent);
-        abilityBlock = AbilityService.resolveAbilityBlock(raw, frontmatter);
-      } else {
-        abilityBlock = AbilityService.parseAbilityBlockFromDocument(el, ctx, frontmatter);
-      }
+      const raw = AbilityService.parseAbilityBlock(abilityBlockContent);
+      const abilityBlock = AbilityService.resolveAbilityBlock(raw, frontmatter);
 
       const baseScore = abilityBlock.abilities[abilityName as keyof AbilityScores];
       const totalScore = AbilityService.getTotalScore(
@@ -109,7 +111,7 @@ export class SpellComponentsView extends BaseView {
         data.attack_bonus = profBonus + modifier;
       }
     } catch {
-      // No ability block found; skip DC/attack calculation
+      // Malformed ability block; skip DC/attack calculation
     }
   }
 

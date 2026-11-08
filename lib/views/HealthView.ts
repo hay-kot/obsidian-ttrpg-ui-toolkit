@@ -14,6 +14,7 @@ import {
   TempMaxHealth,
   UnresolvedHitDice,
 } from "lib/types";
+import { loadDocumentTextFor } from "lib/services/document-text";
 import { msgbus } from "lib/services/event-bus";
 import { hasTemplateVariables, processTemplate, createTemplateContext } from "lib/utils/template";
 import { useFileContext, FileContext } from "./filecontext";
@@ -75,6 +76,13 @@ class HealthMarkdown extends VueMarkdown {
   }
 
   private async processAndRender() {
+    // Resolving against a cold document cache would use default ability
+    // scores, and the clamp below would then save current HP under that
+    // too-low max for good.
+    if (this.hasTemplateValues()) {
+      await loadDocumentTextFor(this.containerEl, this.fileContext.md());
+    }
+
     const healthBlock = this.processTemplates(this.unresolvedBlock);
     this.currentHealthBlock = healthBlock;
 

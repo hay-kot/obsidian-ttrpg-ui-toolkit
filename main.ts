@@ -16,8 +16,7 @@ import { readLegacySettings, resolveDefaultStatePath } from "lib/services/legacy
 import { JsonDataStore } from "./lib/services/kv/local-file-store";
 import { DEFAULT_SETTINGS, TtrpgUIToolkitSettings } from "settings";
 import { THEMES } from "lib/themes";
-import { msgbus } from "lib/services/event-bus";
-import * as Fm from "lib/domains/frontmatter";
+import { documentText, publishFrontmatterChange } from "lib/services/document-text";
 
 export default class TtrpgUIToolkitPlugin extends Plugin {
   settings: TtrpgUIToolkitSettings;
@@ -81,15 +80,16 @@ export default class TtrpgUIToolkitPlugin extends Plugin {
     // Initialize the JsonDataStore with the configured path
     this.initDataStore();
 
-    // Setup Listener for frontmatter changes
-    this.registerEvent(
-      this.app.metadataCache.on("changed", (file) => {
-        const filefm = this.app.metadataCache.getCache(file.path)?.frontmatter;
-        const fm = Fm.anyIntoFrontMatter(filefm || {});
+    documentText.init(this.app);
 
-        msgbus.publish(file.path, "fm:changed", fm);
+    this.registerEvent(
+      this.app.metadataCache.on("changed", (file, data) => {
+        documentText.update(file.path, data);
+        publishFrontmatterChange(this.app, file.path);
       })
     );
+    this.registerEvent(this.app.vault.on("delete", (file) => documentText.remove(file.path)));
+    this.registerEvent(this.app.vault.on("rename", (_file, oldPath) => documentText.remove(oldPath)));
 
     const kv = new KeyValueStore(this.dataStore);
     const { app } = this;
@@ -132,6 +132,7 @@ export default class TtrpgUIToolkitPlugin extends Plugin {
 
   onunload() {
     this.removeColorSettings();
+    documentText.clear();
   }
 
   async loadSettings() {
