@@ -6,6 +6,12 @@
   margin: 8px 0;
 }
 
+@media print {
+  .dnd-ui-event-buttons-container {
+    display: none;
+  }
+}
+
 .dnd-ui-event-button {
   display: flex;
   align-items: center;

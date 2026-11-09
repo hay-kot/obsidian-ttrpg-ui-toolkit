@@ -105,6 +105,12 @@
     flex-wrap: wrap;
 }
 
+@media print {
+    .dnd-ui-health-controls {
+        display: none;
+    }
+}
+
 .dnd-ui-health-input {
     width: 5rem;
     background-color: var(--dnd-ui-color-bg-secondary);
