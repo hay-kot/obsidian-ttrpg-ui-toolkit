@@ -11,6 +11,12 @@
     margin: 0;
 }
 
+@media print {
+    .dnd-ui-checkbox-button {
+        border: 1px solid black;
+    }
+}
+
 /* The checked fill lives on a pseudo-element because community themes override
  * button backgrounds with high-specificity rules (e.g. LYT Mode's
  * `.theme-dark .workspace button { background: ... }`), which would hide a fill
@@ -28,6 +34,12 @@
 
 .dnd-ui-checkbox-button[aria-pressed="true"] {
     --dnd-ui-checkbox-fill: var(--dnd-ui-color-border-active);
+}
+
+@media print {
+    .dnd-ui-checkbox-button[aria-pressed=true] {
+        background-color: grey;
+    }
 }
 
 .dnd-ui-checkbox-button:focus {
