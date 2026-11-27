@@ -39,6 +39,23 @@ function init() {
   Handlebars.registerHelper("round", (a: number) => Math.round(a));
   Handlebars.registerHelper("modifier", (score: number) => calculateModifier(score));
 
+  // Last argument is handlebars options object, filter it out
+  Handlebars.registerHelper("min", (...args: unknown[]) => {
+    const numbers = args
+      .slice(0, -1)
+      .map((n) => Number(n))
+      .filter((n) => !isNaN(n));
+    return Math.min(...numbers);
+  });
+  // Last argument is handlebars options object, filter it out
+  Handlebars.registerHelper("max", (...args: unknown[]) => {
+    const numbers = args
+      .slice(0, -1)
+      .map((n) => Number(n))
+      .filter((n) => !isNaN(n));
+    return Math.max(...numbers);
+  });
+
   // Text helpers
   Handlebars.registerHelper("strip-link", (a: string) => a.replace(/\[\[([^|]+)\|([^\]]+)\]\]/g, "$2"));
 }
