@@ -48,6 +48,8 @@ describe("template", () => {
       expect(processTemplate("{{floor 3.7}}", mockContext)).toBe("3");
       expect(processTemplate("{{ceil 3.2}}", mockContext)).toBe("4");
       expect(processTemplate("{{round 3.6}}", mockContext)).toBe("4");
+      expect(processTemplate("{{min 6 17 10}}", mockContext)).toBe("6");
+      expect(processTemplate("{{max 14 19 8}}", mockContext)).toBe("19");
       expect(processTemplate("{{strip-link frontmatter.class}}", mockContext)).toBe("Wizard");
     });
 
