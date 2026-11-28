@@ -1,0 +1,14 @@
+.dnd-ui-error {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--text-error);
+  border-left-width: 4px;
+  border-radius: 4px;
+  /* Fallback for engines without color-mix() */
+  background-color: var(--background-secondary);
+  /* Tint the theme background with the error colour so text contrast does not depend on the theme's red */
+  background-color: color-mix(in srgb, var(--background-modifier-error) 10%, var(--background-primary));
+  /* Normal text colour: --text-error on this tint is below 4.5:1 in the default light theme */
+  color: var(--text-normal);
+  font-size: 14px;
+}
