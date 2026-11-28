@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AbilityScoreView } from "./AbilityScoreView";
 import { App, MarkdownPostProcessorContext } from "obsidian";
+import { msgbus } from "lib/services/event-bus";
 
 vi.mock("./VueMarkdown", () => {
   return {
@@ -87,6 +88,37 @@ describe("AbilityScoreView", () => {
 
     // Exactly one additional render — no recursion via abilities:changed.
     expect(addedChild.mount.mock.calls.length).toBe(initialMountCalls + 1);
+  });
+
+  it("publishes abilities:changed only when the computed scores change", async () => {
+    const publishSpy = vi.spyOn(msgbus, "publish");
+    const source = `abilities:
+  strength: 14
+  dexterity: 12`;
+    abilityView.render(source, mockElement, mockContext);
+    await addedChild.onload();
+
+    const countPublishes = () => publishSpy.mock.calls.filter((c) => c[1] === "abilities:changed").length;
+    expect(countPublishes()).toBe(1);
+
+    // Re-render with identical scores: no new publish
+    addedChild.processAndRender();
+    expect(countPublishes()).toBe(1);
+
+    // Scores change: publish again
+    addedChild.source = `abilities:
+  strength: 16
+  dexterity: 12`;
+    addedChild.processAndRender();
+    expect(countPublishes()).toBe(2);
+
+    // An ability is dropped (falls back to its default): publish again
+    addedChild.source = `abilities:
+  strength: 16`;
+    addedChild.processAndRender();
+    expect(countPublishes()).toBe(3);
+
+    publishSpy.mockRestore();
   });
 
   it("does not subscribe at all for non-templated ability blocks", async () => {
