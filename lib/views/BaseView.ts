@@ -1,5 +1,6 @@
 import { MarkdownPostProcessorContext } from "obsidian";
 import { App } from "obsidian";
+import { normalizeYamlIndentation } from "lib/utils/yaml-sanitizer";
 
 /**
  * BaseView handles the basic registration of components and creates consistent logic for rendering.
@@ -20,7 +21,7 @@ export abstract class BaseView {
   public register(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
     const div = el.createDiv();
     try {
-      const result = this.render(source, el, ctx);
+      const result = this.render(normalizeYamlIndentation(source), el, ctx);
       if (result instanceof HTMLElement) {
         div.appendChild(result);
       }
