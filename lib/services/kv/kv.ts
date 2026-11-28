@@ -10,6 +10,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export class KeyValueStore {
   private store: DataStore;
   private cache: Record<string, unknown> | null = null;
+  private cachePromise: Promise<Record<string, unknown>> | null = null;
+  private activeWrite: Promise<void> | null = null;
+  private queuedWrite: Promise<void> | null = null;
 
   constructor(store: DataStore) {
     this.store = store;
@@ -18,24 +21,76 @@ export class KeyValueStore {
   /**
    * Initialize the cache from the data store
    */
-  private async ensureCache(): Promise<Record<string, unknown>> {
-    if (this.cache === null) {
-      // The state file is user-writable and may have been hand-edited or
-      // truncated, so anything that isn't a keyed `state` object starts over
-      // rather than propagating a broken shape to every caller.
-      const data = await this.store.loadData();
-      this.cache = isRecord(data) && isRecord(data.state) ? data.state : {};
+  private ensureCache(): Promise<Record<string, unknown>> {
+    if (this.cache !== null) {
+      return Promise.resolve(this.cache);
     }
-    return this.cache;
+
+    // Share one in-flight load so concurrent first calls don't each load and
+    // overwrite the cache (losing writes made against the earlier copy).
+    if (this.cachePromise === null) {
+      this.cachePromise = this.store
+        .loadData()
+        .then((data) => {
+          // The state file is user-writable and may have been hand-edited or
+          // truncated, so anything that isn't a keyed `state` object starts over
+          // rather than propagating a broken shape to every caller.
+          const cache = isRecord(data) && isRecord(data.state) ? data.state : {};
+          this.cache = cache;
+          return cache;
+        })
+        .catch((error: unknown) => {
+          // Allow a later call to retry instead of caching the failure.
+          this.cachePromise = null;
+          throw error;
+        });
+    }
+    return this.cachePromise;
   }
 
   /**
-   * Persist the current cache to the data store
+   * Persist the current cache to the data store.
+   *
+   * At most one write is in flight and at most one is queued behind it. Every
+   * write saves the whole cache as it is when the write starts, so callers that
+   * arrive while a write is queued share that one write instead of adding their
+   * own: the latest state is saved once and no two writes overlap.
+   *
+   * A failed write rejects every caller waiting on it. The values stay in the
+   * cache, so the next successful write saves them. A write that never settles
+   * blocks later writes (they would otherwise overlap it); this is deliberate.
    */
-  private async persistCache(): Promise<void> {
-    if (this.cache !== null) {
-      await this.store.saveData({ state: this.cache });
+  private persistCache(): Promise<void> {
+    if (this.cache === null) {
+      return Promise.resolve();
     }
+    if (this.queuedWrite !== null) {
+      return this.queuedWrite;
+    }
+    if (this.activeWrite === null) {
+      return this.startWrite();
+    }
+
+    const ignore = () => undefined;
+    this.queuedWrite = this.activeWrite.then(ignore, ignore).then(() => {
+      this.queuedWrite = null;
+      return this.startWrite();
+    });
+    return this.queuedWrite;
+  }
+
+  private startWrite(): Promise<void> {
+    // Start via a microtask so a synchronous throw from saveData rejects the
+    // promise like an async failure, and the cache is read as late as possible.
+    const write: Promise<void> = Promise.resolve()
+      .then(() => this.store.saveData({ state: this.cache }))
+      .finally(() => {
+        if (this.activeWrite === write) {
+          this.activeWrite = null;
+        }
+      });
+    this.activeWrite = write;
+    return write;
   }
 
   /**
@@ -89,6 +144,7 @@ export class KeyValueStore {
    */
   async clear(): Promise<void> {
     this.cache = {};
+    this.cachePromise = Promise.resolve(this.cache);
     await this.persistCache();
   }
 
