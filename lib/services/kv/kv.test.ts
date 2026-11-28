@@ -177,6 +177,133 @@ describe("KeyValueStore", () => {
     });
   });
 
+  describe("concurrency", () => {
+    it("should load from the data store once for concurrent first reads", async () => {
+      let loads = 0;
+      const store: DataStore = {
+        async loadData() {
+          loads++;
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          return { state: { a: 1 } };
+        },
+        async saveData() {},
+      };
+      const kv = new KeyValueStore(store);
+
+      const results = await Promise.all([kv.get("a"), kv.get("a"), kv.has("a")]);
+
+      expect(loads).toBe(1);
+      expect(results).toEqual([1, 1, true]);
+    });
+
+    it("should not lose concurrent sets that race on the first load", async () => {
+      const store: DataStore = {
+        async loadData() {
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          return null;
+        },
+        async saveData() {},
+      };
+      const kv = new KeyValueStore(store);
+
+      await Promise.all([kv.set("a", 1), kv.set("b", 2)]);
+
+      expect(await kv.keys()).toEqual(["a", "b"]);
+    });
+
+    it("should serialize writes so they never overlap and persist in order", async () => {
+      let inFlight = 0;
+      let maxInFlight = 0;
+      const saved: unknown[] = [];
+      const store: DataStore = {
+        async loadData() {
+          return null;
+        },
+        async saveData(data: unknown) {
+          inFlight++;
+          maxInFlight = Math.max(maxInFlight, inFlight);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          saved.push(JSON.parse(JSON.stringify(data)));
+          inFlight--;
+        },
+      };
+      const kv = new KeyValueStore(store);
+
+      await Promise.all([kv.set("a", 1), kv.set("b", 2), kv.set("c", 3)]);
+
+      expect(maxInFlight).toBe(1);
+      expect(saved[saved.length - 1]).toEqual({ state: { a: 1, b: 2, c: 3 } });
+    });
+
+    it("should coalesce writes queued behind an in-flight write into one", async () => {
+      let calls = 0;
+      const saved: unknown[] = [];
+      const store: DataStore = {
+        async loadData() {
+          return null;
+        },
+        async saveData(data: unknown) {
+          calls++;
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          saved.push(JSON.parse(JSON.stringify(data)));
+        },
+      };
+      const kv = new KeyValueStore(store);
+      await kv.get("warm"); // load first so every set below reaches persist in the same tick
+
+      // The first write is in flight while the other four arrive; they share one follow-up write.
+      await Promise.all([1, 2, 3, 4, 5].map((n) => kv.set(`k${n}`, n)));
+
+      expect(calls).toBe(2);
+      expect(saved[saved.length - 1]).toEqual({ state: { k1: 1, k2: 2, k3: 3, k4: 4, k5: 5 } });
+    });
+
+    it("should keep writing after a failed write", async () => {
+      let calls = 0;
+      const store: DataStore = {
+        async loadData() {
+          return null;
+        },
+        async saveData() {
+          calls++;
+          if (calls === 1) throw new Error("disk full");
+        },
+      };
+      const kv = new KeyValueStore(store);
+
+      await expect(kv.set("a", 1)).rejects.toThrow("disk full");
+      await expect(kv.set("b", 2)).resolves.toBeUndefined();
+      expect(calls).toBe(2);
+    });
+
+    it("should reject every caller sharing a failed coalesced write and recover on the next write", async () => {
+      let calls = 0;
+      const saved: unknown[] = [];
+      const store: DataStore = {
+        async loadData() {
+          return null;
+        },
+        async saveData(data: unknown) {
+          calls++;
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          // Fail the follow-up (second) write that the queued sets share.
+          if (calls === 2) throw new Error("disk full");
+          saved.push(JSON.parse(JSON.stringify(data)));
+        },
+      };
+      const kv = new KeyValueStore(store);
+      await kv.get("warm");
+
+      const results = await Promise.allSettled([kv.set("a", 1), kv.set("b", 2), kv.set("c", 3)]);
+
+      expect(results.map((r) => r.status)).toEqual(["fulfilled", "rejected", "rejected"]);
+
+      // The failed values stay in the cache, so the next successful write persists them.
+      await kv.set("d", 4);
+      expect(saved[saved.length - 1]).toEqual({ state: { a: 1, b: 2, c: 3, d: 4 } });
+    });
+  });
+
   describe("cache behavior", () => {
     it("should initialize cache from existing data store", async () => {
       // Pre-populate the mock store
