@@ -99,6 +99,14 @@ consumables:
 | `hp`     | Number/Object | —        | Hit points (single value or object for groups) |
 | `link`   | String        | —        | Link to character sheet or notes               |
 
+::: info Duplicate Names
+Giving each combatant a unique name is still recommended (for example `Goblin A` and `Goblin B`), or use a single item with per-creature HP as shown in [Monster Groups](#monster-groups). Duplicate names are handled as a fallback so that items do not share state by accident.
+
+Each combatant's initiative and HP are saved under its name. When several items share a name, the first one keeps the plain name and each later one gets a numeric suffix based on how many items with that name come before it (for example `Goblin`, `Goblin_1`, `Goblin_2`). Combatants with unique names are not affected.
+
+With duplicate names, saved state follows that order. If you reorder duplicate-named items, or remove one from the middle, the saved initiative and HP stay with the position, so they can move to a different combatant. Unique names avoid this.
+:::
+
 ### HP Options
 
 **Single HP Pool:**
