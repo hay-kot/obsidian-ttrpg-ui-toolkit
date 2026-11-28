@@ -1,8 +1,9 @@
 import { stripCalloutMarkers } from "./callout";
+import { normalizeYamlIndentation } from "./yaml-sanitizer";
 
 /**
  * Extracts code blocks of a specific type from text.
- * Handles callout markers automatically.
+ * Handles callout markers and tab indentation automatically.
  *
  * @param text - The text to search for code blocks
  * @param blockType - The type of code block to extract (e.g., "ability", "skills")
@@ -20,10 +21,12 @@ export function extractCodeBlocks(text: string, blockType: string): string[] {
     return [];
   }
 
-  // Extract content from each match
+  // Extract content from each match. These blocks are read from raw note text and
+  // parsed without going through BaseView.register, so normalize tabs here too.
   return matches.map((match) => {
     // Remove the backticks and block type
-    return match.replace(new RegExp(`\\\`\\\`\\\`${blockType}|\\\`\\\`\\\``, "g"), "").trim();
+    const content = match.replace(new RegExp(`\\\`\\\`\\\`${blockType}|\\\`\\\`\\\``, "g"), "").trim();
+    return normalizeYamlIndentation(content);
   });
 }
 

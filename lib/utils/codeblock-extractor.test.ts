@@ -90,6 +90,15 @@ skills: test
     });
   });
 
+  describe("tab normalization", () => {
+    it("should normalize tab indentation inside extracted blocks", () => {
+      const text = "```ability\nability:\n\tstrength: 10\n```";
+
+      const blocks = extractCodeBlocks(text, "ability");
+      expect(blocks[0]).toBe("ability:\n  strength: 10");
+    });
+  });
+
   describe("extractFirstCodeBlock", () => {
     it("should extract first block when multiple exist", () => {
       const text = `\`\`\`ability

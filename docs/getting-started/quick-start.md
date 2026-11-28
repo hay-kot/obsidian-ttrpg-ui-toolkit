@@ -93,6 +93,10 @@ thumb is to prefix whatever keys you have with your character's name
 - ❌ `level_1_spells`
 - ✅ `din_level_1_spells`
 
+### Indentation
+
+Code blocks contain YAML. Indent nested values with spaces or tabs. Leading tabs are read as two spaces each, so a block indented with tabs works the same as one indented with spaces. Tabs inside values (for example in quoted text) are kept as written.
+
 ### File Scope
 
 Events (like rest buttons) only affect components in the same file. This means each character sheet can have its own rest system without interfering with others.
