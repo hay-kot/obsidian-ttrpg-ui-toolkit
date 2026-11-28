@@ -16,6 +16,11 @@ const emit = defineEmits<{
 
 const inputValues = ref<Record<string, string>>({});
 
+function getItemKey(item: InitiativeItem): string {
+  const index = props.static.items.indexOf(item);
+  return itemHashKey(item, index, props.static.items);
+}
+
 function getInputValue(key: string): string {
   return inputValues.value[key] ?? "1";
 }
@@ -42,7 +47,7 @@ function adaptInitiativeConsumable(consumable: InitiativeConsumable): ParsedCons
 }
 
 function handleSetInitiative(item: InitiativeItem, value: string) {
-  const itemHash = itemHashKey(item);
+  const itemHash = getItemKey(item);
   const initiativeValue = parseInt(value) || 0;
   const newInitiatives = { ...props.state.initiatives };
 
@@ -57,7 +62,7 @@ function handleDamage(item: InitiativeItem, monsterKey: string, value: string, t
   const parsedValue = parseInt(value) || 0;
   if (parsedValue <= 0) return;
 
-  const itemHash = itemHashKey(item);
+  const itemHash = getItemKey(item);
 
   const newHp = { ...props.state.hp };
   if (!newHp[itemHash]) {
@@ -148,7 +153,7 @@ function handleReset() {
   const newConsumables: Record<string, number> = {};
 
   props.static.items.forEach((item) => {
-    const indexStr = itemHashKey(item);
+    const indexStr = getItemKey(item);
     newInitiatives[indexStr] = 0;
     newHp[indexStr] = {};
 
@@ -196,7 +201,7 @@ function getMonsterStatusClass(currentHp: number, maxHp: number): string {
 }
 
 function getSingleMonsterStatusClass(item: InitiativeItem): string {
-  const hashKey = itemHashKey(item);
+  const hashKey = getItemKey(item);
   const itemHp = props.state.hp[hashKey] || {};
   const monsterKey = Object.keys(itemHp)[0] || "main";
   const maxHp = getMaxHp(item);
@@ -294,8 +299,8 @@ function consumableStates(): Record<string, ConsumableState> {
               <div :class="['dnd-ui-initiative-hp-inline', getSingleMonsterStatusClass(item)]">
                 <div class="dnd-ui-initiative-hp-display">
                   <span class="dnd-ui-initiative-hp-value">{{
-                    props.state.hp[itemHashKey(item)]?.[
-                      Object.keys(props.state.hp[itemHashKey(item)] || {})[0] || "main"
+                    props.state.hp[getItemKey(item)]?.[
+                      Object.keys(props.state.hp[getItemKey(item)] || {})[0] || "main"
                     ] || 0
                   }}</span>
                   <span class="dnd-ui-initiative-hp-separator">/</span>
@@ -306,8 +311,8 @@ function consumableStates(): Record<string, ConsumableState> {
                     type="number"
                     class="dnd-ui-initiative-hp-input"
                     placeholder="0"
-                    :value="getInputValue(itemHashKey(item))"
-                    @input="setInputValue(itemHashKey(item), ($event.target as HTMLInputElement).value)"
+                    :value="getInputValue(getItemKey(item))"
+                    @input="setInputValue(getItemKey(item), ($event.target as HTMLInputElement).value)"
                   />
                   <button
                     class="dnd-ui-initiative-hp-button dnd-ui-initiative-damage"
@@ -315,10 +320,10 @@ function consumableStates(): Record<string, ConsumableState> {
                     @click="
                       handleDamage(
                         props.static.items[index],
-                        Object.keys(props.state.hp[itemHashKey(item)] || {})[0] || 'main',
-                        getInputValue(itemHashKey(item))
+                        Object.keys(props.state.hp[getItemKey(item)] || {})[0] || 'main',
+                        getInputValue(getItemKey(item))
                       );
-                      resetInputValue(itemHashKey(item));
+                      resetInputValue(getItemKey(item));
                     "
                   >
                     &#x2212;
@@ -329,11 +334,11 @@ function consumableStates(): Record<string, ConsumableState> {
                     @click="
                       handleDamage(
                         props.static.items[index],
-                        Object.keys(props.state.hp[itemHashKey(item)] || {})[0] || 'main',
-                        getInputValue(itemHashKey(item)),
+                        Object.keys(props.state.hp[getItemKey(item)] || {})[0] || 'main',
+                        getInputValue(getItemKey(item)),
                         'heal'
                       );
-                      resetInputValue(itemHashKey(item));
+                      resetInputValue(getItemKey(item));
                     "
                   >
                     +
@@ -357,14 +362,12 @@ function consumableStates(): Record<string, ConsumableState> {
                     <span
                       :class="[
                         'dnd-ui-initiative-monster-name',
-                        getMonsterStatusClass(props.state.hp[itemHashKey(item)]?.[key] || 0, maxHp),
+                        getMonsterStatusClass(props.state.hp[getItemKey(item)]?.[key] || 0, maxHp),
                       ]"
                       >{{ key }}</span
                     >
                     <span class="dnd-ui-initiative-monster-hp">
-                      <span class="dnd-ui-initiative-hp-value">{{
-                        props.state.hp[itemHashKey(item)]?.[key] || 0
-                      }}</span>
+                      <span class="dnd-ui-initiative-hp-value">{{ props.state.hp[getItemKey(item)]?.[key] || 0 }}</span>
                       <span class="dnd-ui-initiative-hp-separator">/</span>
                       <span class="dnd-ui-initiative-hp-max">{{ maxHp }}</span>
                     </span>
@@ -374,15 +377,15 @@ function consumableStates(): Record<string, ConsumableState> {
                       type="number"
                       class="dnd-ui-initiative-hp-input"
                       placeholder="0"
-                      :value="getInputValue(`${itemHashKey(item)}-${key}`)"
-                      @input="setInputValue(`${itemHashKey(item)}-${key}`, ($event.target as HTMLInputElement).value)"
+                      :value="getInputValue(`${getItemKey(item)}-${key}`)"
+                      @input="setInputValue(`${getItemKey(item)}-${key}`, ($event.target as HTMLInputElement).value)"
                     />
                     <button
                       class="dnd-ui-initiative-hp-button dnd-ui-initiative-damage"
                       title="Damage"
                       @click="
-                        handleDamage(props.static.items[index], key, getInputValue(`${itemHashKey(item)}-${key}`));
-                        resetInputValue(`${itemHashKey(item)}-${key}`);
+                        handleDamage(props.static.items[index], key, getInputValue(`${getItemKey(item)}-${key}`));
+                        resetInputValue(`${getItemKey(item)}-${key}`);
                       "
                     >
                       &#x2212;
@@ -394,10 +397,10 @@ function consumableStates(): Record<string, ConsumableState> {
                         handleDamage(
                           props.static.items[index],
                           key,
-                          getInputValue(`${itemHashKey(item)}-${key}`),
+                          getInputValue(`${getItemKey(item)}-${key}`),
                           'heal'
                         );
-                        resetInputValue(`${itemHashKey(item)}-${key}`);
+                        resetInputValue(`${getItemKey(item)}-${key}`);
                       "
                     >
                       +

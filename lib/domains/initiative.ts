@@ -38,8 +38,8 @@ export function getDefaultInitiativeState(block: InitiativeBlock): InitiativeSta
   const consumables: Record<string, number> = {};
 
   // Initialize with default values (0 for initiative, max hp for health)
-  block.items.forEach((item) => {
-    const key = itemHashKey(item);
+  block.items.forEach((item, index) => {
+    const key = itemHashKey(item, index, block.items);
     initiatives[key] = 0;
     hp[key] = {};
 
@@ -74,8 +74,8 @@ export function mergeInitiativeState(block: InitiativeBlock, saved: InitiativeSt
   const initiatives: Record<string, number> = {};
   const hp: Record<string, Record<string, number>> = {};
 
-  block.items.forEach((item) => {
-    const key = itemHashKey(item);
+  block.items.forEach((item, index) => {
+    const key = itemHashKey(item, index, block.items);
     initiatives[key] = saved.initiatives[key] ?? defaults.initiatives[key] ?? 0;
     hp[key] = saved.hp[key] ?? defaults.hp[key] ?? {};
   });
@@ -89,8 +89,20 @@ export function mergeInitiativeState(block: InitiativeBlock, saved: InitiativeSt
   };
 }
 
-export function itemHashKey(item: InitiativeItem): string {
-  return item.name;
+/**
+ * Generates a unique key for an initiative item. The first item with a given
+ * name uses the name alone. Later items with the same name get the count of
+ * earlier same-name items as a suffix (e.g., three "Goblin" entries become
+ * "Goblin", "Goblin_1" and "Goblin_2"). Because the suffix counts only items
+ * with the same name, adding or moving differently named items does not change
+ * any key, and a unique name always keeps its bare-name key.
+ */
+export function itemHashKey(item: InitiativeItem, index: number, allItems: InitiativeItem[]): string {
+  let occurrence = 0;
+  for (let i = 0; i < index; i++) {
+    if (allItems[i].name === item.name) occurrence++;
+  }
+  return occurrence === 0 ? item.name : `${item.name}_${occurrence}`;
 }
 
 // Sort items by initiative value, higher values first
@@ -102,7 +114,7 @@ export function getSortedInitiativeItems(
     .map((item, index) => ({
       item,
       index,
-      initiative: initiativeValues[itemHashKey(item)] || 0,
+      initiative: initiativeValues[itemHashKey(item, index, items)] || 0,
     }))
     .sort((a, b) => b.initiative - a.initiative);
 }
