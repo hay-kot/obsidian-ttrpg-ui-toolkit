@@ -60,12 +60,22 @@ const ZERO_ABILITIES: AbilityScores = {
   charisma: 0,
 };
 
-/** Parses and resolves the first `ability` code block in a note's text. Throws when there is none. */
+/** Thrown when a note has no `ability` code block, so callers can tell "absent" from "malformed". */
+export class NoAbilityBlockError extends Error {
+  constructor(message = "No ability code blocks found") {
+    super(message);
+    this.name = "NoAbilityBlockError";
+    // Keep instanceof working if the build target down-levels class extends Error.
+    Object.setPrototypeOf(this, NoAbilityBlockError.prototype);
+  }
+}
+
+/** Parses and resolves the first `ability` code block in a note's text. Throws NoAbilityBlockError when there is none. */
 export function parseAbilityBlockFromText(documentText: string, frontmatter?: Frontmatter | null): AbilityBlock {
   const abilityContent = extractFirstCodeBlock(documentText, "ability");
 
   if (!abilityContent) {
-    throw new Error("No ability code blocks found");
+    throw new NoAbilityBlockError();
   }
 
   const raw = parseAbilityBlock(abilityContent);

@@ -1,6 +1,6 @@
 import * as Handlebars from "handlebars";
 import { AbilityScores, Frontmatter, SkillsBlock } from "../types";
-import { parseAbilityBlockFromText, calculateModifier, getTotalScore } from "../domains/abilities";
+import { parseAbilityBlockFromText, calculateModifier, getTotalScore, NoAbilityBlockError } from "../domains/abilities";
 import { parseSkillsBlock } from "../domains/skills";
 import { documentTextFor } from "../services/document-text";
 import { FileContext } from "../views/filecontext";
@@ -132,8 +132,13 @@ export function createTemplateContext(el: HTMLElement, fileContext: FileContext)
       wisdom: getTotalScore(abilityBlock.abilities.wisdom, "wisdom", abilityBlock.bonuses),
       charisma: getTotalScore(abilityBlock.abilities.charisma, "charisma", abilityBlock.bonuses),
     };
-  } catch {
-    // No ability block found; fall back to defaults
+  } catch (error) {
+    // A missing ability block is expected and falls back to defaults. Any other
+    // error (e.g. a YAML typo) is a user mistake worth surfacing.
+    if (!(error instanceof NoAbilityBlockError)) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn("[ttrpg-ui-toolkit] Error parsing ability block for template context:", msg);
+    }
   }
 
   try {
@@ -142,8 +147,11 @@ export function createTemplateContext(el: HTMLElement, fileContext: FileContext)
     if (skillsContent) {
       skills = parseSkillsBlock(skillsContent);
     }
-  } catch {
-    // No skills block found; fall back to defaults
+  } catch (error) {
+    // A missing skills block never throws (extractFirstCodeBlock returns falsy),
+    // so anything caught here is a real parse error.
+    const msg = error instanceof Error ? error.message : String(error);
+    console.warn("[ttrpg-ui-toolkit] Error parsing skills block for template context:", msg);
   }
 
   return {

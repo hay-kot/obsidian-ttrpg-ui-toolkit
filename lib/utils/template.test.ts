@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { coerceNumericTemplate, hasTemplateVariables, processTemplate, createTemplateContext } from "./template";
-import { calculateModifier } from "lib/domains/abilities";
+import * as Abilities from "lib/domains/abilities";
+import { calculateModifier, NoAbilityBlockError } from "lib/domains/abilities";
 import type { TemplateContext } from "./template";
 
 describe("template", () => {
@@ -221,6 +222,76 @@ expertise:
       const intelligenceModifier = calculateModifier(context.abilities.intelligence);
       const investigationValue = intelligenceModifier + context.frontmatter.proficiency_bonus * 2;
       expect(investigationValue).toBe(10);
+    });
+
+    describe("parse error warnings", () => {
+      const contextFor = (text: string) =>
+        ({
+          frontmatter: () => ({ proficiency_bonus: 2 }),
+          md: () => ({ getSectionInfo: vi.fn().mockReturnValue({ text }) }),
+        }) as any;
+
+      let warnSpy: ReturnType<typeof vi.spyOn>;
+
+      beforeEach(() => {
+        warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      });
+
+      afterEach(() => {
+        warnSpy.mockRestore();
+      });
+
+      it("warns once when the ability block is malformed", () => {
+        const text = "```ability\nabilities: [unclosed\n```\n";
+        const context = createTemplateContext({} as HTMLElement, contextFor(text));
+
+        expect(context.abilities.strength).toBe(0);
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy.mock.calls[0][0]).toContain("[ttrpg-ui-toolkit] Error parsing ability block");
+      });
+
+      it("does not warn when there is no ability block", () => {
+        createTemplateContext({} as HTMLElement, contextFor("Nothing here"));
+        expect(warnSpy).not.toHaveBeenCalled();
+      });
+
+      it("does not warn for a missing ability block regardless of the error message", () => {
+        const spy = vi.spyOn(Abilities, "parseAbilityBlockFromText").mockImplementation(() => {
+          throw new NoAbilityBlockError("reworded: nothing to see");
+        });
+        try {
+          createTemplateContext({} as HTMLElement, contextFor("Nothing here"));
+          expect(warnSpy).not.toHaveBeenCalled();
+        } finally {
+          spy.mockRestore();
+        }
+      });
+
+      it("warns when a plain Error carries the old missing-block message", () => {
+        const spy = vi.spyOn(Abilities, "parseAbilityBlockFromText").mockImplementation(() => {
+          throw new Error("No ability code blocks found");
+        });
+        try {
+          createTemplateContext({} as HTMLElement, contextFor("Nothing here"));
+          expect(warnSpy).toHaveBeenCalledTimes(1);
+        } finally {
+          spy.mockRestore();
+        }
+      });
+
+      it("warns once when the skills block is malformed", () => {
+        const text = "```skills\nproficiencies: [unclosed\n```\n";
+        const context = createTemplateContext({} as HTMLElement, contextFor(text));
+
+        expect(context.skills.proficiencies).toEqual([]);
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy.mock.calls[0][0]).toContain("[ttrpg-ui-toolkit] Error parsing skills block");
+      });
+
+      it("does not warn when there is no skills block", () => {
+        createTemplateContext({} as HTMLElement, contextFor("```ability\nabilities:\n  strength: 10\n```\n"));
+        expect(warnSpy).not.toHaveBeenCalled();
+      });
     });
   });
 });
