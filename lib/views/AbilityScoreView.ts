@@ -16,12 +16,15 @@ export class AbilityScoreView extends BaseView {
 
 class AbilityScoreComponent extends TemplateAwareComponent {
   protected listenToAbilitiesChange = false;
+  private previousTotalScores: Record<string, number> | null = null;
 
   protected processAndRender() {
     const raw = AbilityService.parseAbilityBlock(this.source);
     this.setupTemplates([this.source]);
     const frontmatter = this.fileContext.frontmatter();
     const abilityBlock = AbilityService.resolveAbilityBlock(raw, frontmatter);
+
+    const currentTotalScores: Record<string, number> = {};
 
     const abilities = Object.entries(abilityBlock.abilities).map(([key, value]) => {
       const isProficient = abilityBlock.proficiencies.includes(key);
@@ -31,6 +34,8 @@ class AbilityScoreComponent extends TemplateAwareComponent {
         key as keyof typeof abilityBlock.abilities,
         abilityBlock.bonuses
       );
+
+      currentTotalScores[key] = totalScore;
 
       let savingThrowValue = AbilityService.calculateModifier(totalScore);
       if (isProficient) savingThrowValue += frontmatter.proficiency_bonus;
@@ -56,7 +61,22 @@ class AbilityScoreComponent extends TemplateAwareComponent {
       };
     });
 
-    msgbus.publish(this.fileContext.filepath, "abilities:changed", undefined);
+    // Contract: every current `abilities:changed` subscriber (TemplateAwareComponent via
+    // fileContext.onAbilitiesChange) re-renders from createTemplateContext(), which reads only the
+    // six total scores. Publish only when those totals differ, to avoid redundant re-renders.
+    // If a subscriber starts reading anything else (proficiencies, bonuses, saving throws),
+    // widen this comparison accordingly.
+    const previous = this.previousTotalScores;
+    const keys = Object.keys(currentTotalScores);
+    const scoresChanged =
+      !previous ||
+      keys.length !== Object.keys(previous).length ||
+      keys.some((key) => currentTotalScores[key] !== previous[key]);
+
+    if (scoresChanged) {
+      this.previousTotalScores = currentTotalScores;
+      msgbus.publish(this.fileContext.filepath, "abilities:changed", undefined);
+    }
 
     this.mount(AbilityCards, { abilities });
   }

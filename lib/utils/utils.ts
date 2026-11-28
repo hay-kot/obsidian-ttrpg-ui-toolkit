@@ -2,6 +2,11 @@
  * Deeply merges a source object (which may be nullable/have optional properties)
  * with a default object containing sensible defaults for all properties.
  *
+ * Note: an explicit `null` in source is treated the same as a missing value
+ * (the default is used). YAML `null` in a user code block therefore means
+ * "not specified", not "explicitly disabled". To turn a feature off, use a
+ * dedicated boolean flag rather than setting a value to null.
+ *
  * @param source The source object with optional properties (may be null/undefined)
  * @param defaults The default object with sensible defaults for all properties
  * @returns A new object with values from source where available, falling back to defaults
